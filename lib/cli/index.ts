@@ -27,12 +27,17 @@ program
   .argument("[file]", "The filepath to the Dockerfile")
   .option("--stdin", "Read the Dockerfile from stdin", false)
   .option("-o, --output <output>", "the output destination of the repair")
+  .option("-i, --in-place", "if present, modify the input file directly", false)
   .action(async function (
     file: string,
-    options: { output: string; stdin: boolean }
+    options: { inPlace: boolean; output: string; stdin: boolean }
   ) {
     if (!options.stdin && !file) {
       console.error("Please provide a Dockerfile file");
+      process.exit(1);
+    }
+    if (options.stdin && options.inPlace) {
+      console.error("Cannot write to stdin");
       process.exit(1);
     }
     if (options.stdin && !file) {
@@ -65,6 +70,11 @@ program
     if (options.output) {
       await writeFile(options.output, repairedOutput, { encoding: "utf-8" });
       console.log(`The repaired Dockerfile was written in ${options.output}`);
+    }
+
+    if (options.inPlace) {
+      await writeFile(file, repairedOutput, { encoding: "utf-8" });
+      console.log(`The repaired Dockerfile was written in ${file}`);
     }
 
     console.log("The changes:\n");
