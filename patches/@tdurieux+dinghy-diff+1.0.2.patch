@@ -1,0 +1,53 @@
+diff --git a/node_modules/@tdurieux/dinghy-diff/dist/data/ASTData.d.ts b/node_modules/@tdurieux/dinghy-diff/dist/data/ASTData.d.ts
+index 087230c..e8937b7 100644
+--- a/node_modules/@tdurieux/dinghy-diff/dist/data/ASTData.d.ts
++++ b/node_modules/@tdurieux/dinghy-diff/dist/data/ASTData.d.ts
+@@ -1,12 +1,12 @@
+ import IData from './IData';
+ import { Nullable } from '../Types';
+ import ICopyable from './ICopyable';
+-import { coreTypes } from '@tdurieux/dinghy';
++import { AbstractNode } from '@tdurieux/dinghy';
+ export default class ASTData implements IData, ICopyable<ASTData> {
+     private _type;
+     private _text;
+-    node: coreTypes.AbstractNode<any>;
+-    constructor(_type: string, _text: Nullable<string>, node: coreTypes.AbstractNode<any>);
++    node: AbstractNode<any>;
++    constructor(_type: string, _text: Nullable<string>, node: AbstractNode<any>);
+     equals(other: any): boolean;
+     get label(): string;
+     get text(): Nullable<string>;
+diff --git a/node_modules/@tdurieux/dinghy-diff/dist/io/TNodeDinghyLSerDes.d.ts b/node_modules/@tdurieux/dinghy-diff/dist/io/TNodeDinghyLSerDes.d.ts
+index d28f4da..64e7888 100644
+--- a/node_modules/@tdurieux/dinghy-diff/dist/io/TNodeDinghyLSerDes.d.ts
++++ b/node_modules/@tdurieux/dinghy-diff/dist/io/TNodeDinghyLSerDes.d.ts
+@@ -1,11 +1,11 @@
+ import SerDes from './SerDes';
+ import { Nullable } from '../Types';
+ import TNode from '../tree/TNode';
+-import { coreTypes } from '@tdurieux/dinghy';
++import { AbstractNode } from '@tdurieux/dinghy';
+ export default abstract class TNodeDinghyLSerDes<T> extends SerDes<TNode<T>> {
+     constructor();
+-    protected abstract getData(type: string, text: Nullable<string>, ast: coreTypes.AbstractNode<any>): T;
++    protected abstract getData(type: string, text: Nullable<string>, ast: AbstractNode<any>): T;
+     buildString(node: TNode<T>): string;
+-    parseAST(ast: coreTypes.AbstractNode<any>, includeChildren?: boolean): TNode<T>;
++    parseAST(ast: AbstractNode<any>, includeChildren?: boolean): TNode<T>;
+     parseFromString(code: string, includeChildren?: boolean): TNode<T>;
+ }
+diff --git a/node_modules/@tdurieux/dinghy-diff/dist/io/impl/ASTDataSerDes.d.ts b/node_modules/@tdurieux/dinghy-diff/dist/io/impl/ASTDataSerDes.d.ts
+index c7aea67..c5d3174 100644
+--- a/node_modules/@tdurieux/dinghy-diff/dist/io/impl/ASTDataSerDes.d.ts
++++ b/node_modules/@tdurieux/dinghy-diff/dist/io/impl/ASTDataSerDes.d.ts
+@@ -1,7 +1,7 @@
+-import { coreTypes } from '@tdurieux/dinghy';
++import { AbstractNode } from '@tdurieux/dinghy';
+ import { Nullable } from '../../Types';
+ import ASTData from '../../data/ASTData';
+ import TNodeDinghyLSerDes from '../TNodeDinghyLSerDes';
+ export default class ASTDataSerDes extends TNodeDinghyLSerDes<ASTData> {
+-    protected getData(tagName: string, text: Nullable<string>, ast: coreTypes.AbstractNode<any>): ASTData;
++    protected getData(tagName: string, text: Nullable<string>, ast: AbstractNode<any>): ASTData;
+ }
