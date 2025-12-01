@@ -22,7 +22,7 @@ import {
   wgetUseHttpsUrl,
   yumInstallRmVarCacheYum,
 } from "../lib/rules/binnacle";
-import { praseFile } from "./test-utils";
+import { praseFile, normalizeEOL } from "./test-utils";
 
 describe("Testing the detecting of rule on real dockerfiles", () => {
   test("1c11182d763188889c00d8f44a91d0df09e0147b", () => {
@@ -41,7 +41,7 @@ describe("Testing the detecting of rule on real dockerfiles", () => {
     const matcher = new Matcher(dockerfile);
     expect(matcher.match(curlUseFlagF)).toHaveLength(1);
     matcher.match(curlUseFlagF)[0].repair();
-    expect(dockerfile.toString(true)).toBe(`FROM elixir
+    expect(normalizeEOL(dockerfile.toString(true))).toBe(normalizeEOL(`FROM elixir
 
 RUN curl -f -q https://deb.nodesource.com/gpgkey/nodesource.gpg.key
 
@@ -51,7 +51,7 @@ RUN if [ -d .git ]; then \\
     elif [ -n \${SOURCE_COMMIT} ]; then \\
         mkdir /src/_build/prod/rel/bors/.git && \\
         echo \${SOURCE_COMMIT} > /src/_build/prod/rel/bors/.git/HEAD; \\
-    fi`);
+    fi`));
   });
   test("1d8c362e7043d7b78836f06256d0ae9b82561af8", () => {
     const dockerfile = praseFile("1d8c362e7043d7b78836f06256d0ae9b82561af8");
@@ -574,7 +574,7 @@ RUN if [ -d .git ]; then \\
   test("unknow-type", () => {
     const dockerfile = praseFile("unknow-type");
     expect(dockerfile).toBeInstanceOf(DockerFile);
-    expect(dockerfile.toString(true)).toBe(dockerfile.position.file?.content);
+    expect(normalizeEOL(dockerfile.toString(true))).toBe(normalizeEOL(dockerfile.position.file?.content || ""));
     //matcher.matchAll(BINNACLE_RULES).forEach((v) => v.repair());
   });
 });

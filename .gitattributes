@@ -1,0 +1,4 @@
+# Force LF line endings for test fixture files
+tests/**/*.Dockerfile text eol=lf
+tests/repaired_data/**/*.Dockerfile text eol=lf
+
