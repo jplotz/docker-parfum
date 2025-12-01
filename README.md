@@ -20,6 +20,32 @@ npm run build
 
 You can use the web version of Docker-Parfum https://durieux.me/docker-parfum/ (The website is purely static no data is sent).
 
+#### Local Development
+
+To run the static web UI locally:
+
+1. Build the browser bundle:
+   ```bash
+   npm install
+   npm run build
+   ```
+
+2. Serve the docs directory:
+   ```bash
+   npx http-server docs -p 4173
+   ```
+
+3. Open `http://localhost:4173` in your browser
+
+4. Paste a Dockerfile in the Monaco editor to analyze it
+
+Note: Requires a modern browser with ES6 support.
+
+To run automated browser tests:
+```bash
+npx playwright install chromium  # One-time setup
+npm run test:ui
+```
 
 ### CLI
 
