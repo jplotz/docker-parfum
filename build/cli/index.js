@@ -67,6 +67,7 @@ var Diff = __importStar(require("diff"));
 var rules_1 = require("../rules");
 var dinghy_1 = require("@tdurieux/dinghy");
 var promises_1 = require("fs/promises");
+var line_endings_1 = require("../utils/line-endings");
 var program = new commander_1.Command();
 program
     .command("rules")
@@ -84,6 +85,7 @@ program
     .argument("[file]", "The filepath to the Dockerfile")
     .option("--stdin", "Read the Dockerfile from stdin", false)
     .option("-o, --output <output>", "the output destination of the repair")
+    .option("-i, --in-place", "if present, modify the input file directly", false)
     .action(function (file, options) {
     return __awaiter(this, void 0, void 0, function () {
         var parser, dockerfile, matcher, smells, _i, smells_1, smell, error_1, repairedOutput, diff;
@@ -92,6 +94,10 @@ program
                 case 0:
                     if (!options.stdin && !file) {
                         console.error("Please provide a Dockerfile file");
+                        process.exit(1);
+                    }
+                    if (options.stdin && options.inPlace) {
+                        console.error("Cannot write to stdin");
                         process.exit(1);
                     }
                     if (options.stdin && !file) {
@@ -127,7 +133,7 @@ program
                     _i++;
                     return [3, 1];
                 case 6:
-                    repairedOutput = matcher.node.toString(true);
+                    repairedOutput = (0, line_endings_1.normalizeLineEndings)(matcher.node.toString(true));
                     diff = Diff.createTwoFilesPatch(file, file, parser.file.content, repairedOutput);
                     if (!options.output) return [3, 8];
                     return [4, (0, promises_1.writeFile)(options.output, repairedOutput, { encoding: "utf-8" })];
@@ -136,6 +142,13 @@ program
                     console.log("The repaired Dockerfile was written in ".concat(options.output));
                     _a.label = 8;
                 case 8:
+                    if (!options.inPlace) return [3, 10];
+                    return [4, (0, promises_1.writeFile)(file, repairedOutput, { encoding: "utf-8" })];
+                case 9:
+                    _a.sent();
+                    console.log("The repaired Dockerfile was written in ".concat(file));
+                    _a.label = 10;
+                case 10:
                     console.log("The changes:\n");
                     console.log(diff);
                     return [2];

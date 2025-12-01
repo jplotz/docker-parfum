@@ -9,6 +9,7 @@ import * as Diff from "diff";
 import { ALL_RULES } from "../rules";
 import { File, DockerParser, parseDocker } from "@tdurieux/dinghy";
 import { writeFile } from "fs/promises";
+import { normalizeLineEndings } from "../utils/line-endings";
 const program = new Command();
 
 program
@@ -59,7 +60,7 @@ program
         await smell.repair();
       } catch (error) {}
     }
-    const repairedOutput = matcher.node.toString(true);
+    const repairedOutput = normalizeLineEndings(matcher.node.toString(true));
     const diff = Diff.createTwoFilesPatch(
       file,
       file,
