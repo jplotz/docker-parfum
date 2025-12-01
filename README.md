@@ -67,6 +67,27 @@ Commands:
   help [command]           display help for command
 ```
 
+#### Examples
+- Output the resulting fix to a new file
+
+  `docker-parfum repair -o Dockerfile2 Dockerfile`
+
+- Repair a Dockerfile in-place
+
+  `docker-parfum repair -i Dockerfile`
+
+- Repair a Dockerfile in-place and suppress smell information
+
+  `docker-parfum repair -iq Dockerfile`
+
+- Generate a patch named Dockerfile.patch to repair a Dockerfile
+
+  `docker-parfum repair -p Dockerfile.patch Dockerfile`
+
+- Generate a patch and suppress smell information
+
+  `docker-parfum repair -pq Dockerfile.patch Dockerfile`
+
 ### API
 
 ```typescript
