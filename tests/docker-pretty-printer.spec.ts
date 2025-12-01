@@ -1,6 +1,7 @@
 import { Matcher } from "../lib/rule-matcher";
 import { ALL_RULES } from "../lib/rules";
 import { praseFile, repairedFile } from "./test-utils";
+import { normalizeLineEndings } from "../lib/utils/line-endings";
 
 async function parseAndRepair(name: string) {
   const dockerfile = praseFile(name);
@@ -11,12 +12,12 @@ async function parseAndRepair(name: string) {
       await smell.repair();
     } catch (error) {}
   }
-  expect(dockerfile.toString(true)).toBe(await repairedFile(name));
+  expect(normalizeLineEndings(dockerfile.toString(true))).toBe(normalizeLineEndings(await repairedFile(name)));
 }
 describe("Testing docker-pretty-printer", () => {
   test("print reprint_issue", () => {
     const dockerfile = praseFile("reprint_issue");
-    expect(dockerfile.toString(true)).toBe(dockerfile.position.file?.content);
+    expect(normalizeLineEndings(dockerfile.toString(true))).toBe(normalizeLineEndings(dockerfile.position.file?.content || ""));
   });
   test("test repair non sha256", async () => {
     await parseAndRepair("non_sha256echo");
