@@ -73,7 +73,6 @@ program
     .command("rules")
     .description("List the supported rules")
     .action(function () {
-    var index = 0;
     for (var _i = 0, ALL_RULES_1 = rules_1.ALL_RULES; _i < ALL_RULES_1.length; _i++) {
         var rule = ALL_RULES_1[_i];
         console.log("".concat(rule.name));
@@ -81,23 +80,31 @@ program
 });
 program
     .command("repair")
-    .description("Repair the Dockerfile smells")
+    .description("Detect and repair smells in a Dockerfile (default: detect + repair)")
     .argument("[file]", "The filepath to the Dockerfile")
     .option("--stdin", "Read the Dockerfile from stdin", false)
-    .option("-o, --output <output>", "the output destination of the repair")
-    .option("-i, --in-place", "if present, modify the input file directly", false)
+    .option("-o, --output <output>", "Write repaired output to <output>")
+    .option("-i, --in-place", "Modify the input file directly", false)
+    .option("-q, --quiet", "Suppress smell information", false)
+    .option("-p, --patch <file>", "Write diff to <file>")
+    .option("--detect-only", "Only detect smells (no repair, no diff)", false)
+    .option("--repair-only", "Only apply repairs (suppress detection output)", false)
     .action(function (file, options) {
     return __awaiter(this, void 0, void 0, function () {
         var parser, dockerfile, matcher, smells, _i, smells_1, smell, error_1, repairedOutput, diff;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
+                    if (options.detectOnly && options.repairOnly) {
+                        console.error("Error: --detect-only and --repair-only cannot be used together.");
+                        process.exit(1);
+                    }
                     if (!options.stdin && !file) {
                         console.error("Please provide a Dockerfile file");
                         process.exit(1);
                     }
                     if (options.stdin && options.inPlace) {
-                        console.error("Cannot write to stdin");
+                        console.error("Cannot write in-place when reading from stdin");
                         process.exit(1);
                     }
                     if (options.stdin && !file) {
@@ -107,18 +114,31 @@ program
                     dockerfile = parser.parse();
                     matcher = new rule_matcher_1.Matcher(dockerfile);
                     smells = matcher.matchAll();
-                    if (smells.length == 0) {
-                        console.log("Well done, no smells found was found in ".concat(file, "!"));
+                    if (options.detectOnly) {
+                        console.log("Detect-only mode: scanning ".concat(file));
+                        if (smells.length === 0) {
+                            console.log("No smells found in ".concat(file, "."));
+                        }
+                        else {
+                            console.log("Found ".concat(smells.length, " smell(s) in ").concat(file, "."));
+                            smells.forEach(function (e) { return console.log(e.toString()); });
+                        }
+                        return [2];
                     }
-                    else {
-                        console.log("Found ".concat(smells.length, " smells in ").concat(file, "."));
+                    if (!options.repairOnly && !options.quiet) {
+                        if (smells.length === 0) {
+                            console.log("No smells found in ".concat(file, "."));
+                        }
+                        else {
+                            console.log("Found ".concat(smells.length, " smell(s) in ").concat(file, "."));
+                            smells.forEach(function (e) { return console.log(e.toString()); });
+                        }
                     }
                     _i = 0, smells_1 = smells;
                     _a.label = 1;
                 case 1:
                     if (!(_i < smells_1.length)) return [3, 6];
                     smell = smells_1[_i];
-                    console.log(smell.toString());
                     _a.label = 2;
                 case 2:
                     _a.trys.push([2, 4, , 5]);
@@ -139,19 +159,29 @@ program
                     return [4, (0, promises_1.writeFile)(options.output, repairedOutput, { encoding: "utf-8" })];
                 case 7:
                     _a.sent();
-                    console.log("The repaired Dockerfile was written in ".concat(options.output));
+                    console.log("Repaired Dockerfile written to ".concat(options.output));
                     _a.label = 8;
                 case 8:
                     if (!options.inPlace) return [3, 10];
                     return [4, (0, promises_1.writeFile)(file, repairedOutput, { encoding: "utf-8" })];
                 case 9:
                     _a.sent();
-                    console.log("The repaired Dockerfile was written in ".concat(file));
+                    console.log("Repaired Dockerfile written to ".concat(file));
                     _a.label = 10;
                 case 10:
-                    console.log("The changes:\n");
+                    if (!options.quiet && !options.repairOnly) {
+                        console.log("The changes:\n");
+                    }
+                    if (!options.patch) return [3, 12];
+                    return [4, (0, promises_1.writeFile)(options.patch, diff, { encoding: "utf-8" })];
+                case 11:
+                    _a.sent();
+                    console.log("Diff written to ".concat(options.patch));
+                    return [3, 13];
+                case 12:
                     console.log(diff);
-                    return [2];
+                    _a.label = 13;
+                case 13: return [2];
             }
         });
     });
@@ -159,33 +189,31 @@ program
 function stdinToString() {
     var BUFSIZE = 256;
     var buf = Buffer.alloc(BUFSIZE);
-    var bytesRead;
     var stdin = "";
-    do {
-        bytesRead = 0;
+    while (true) {
+        var bytesRead = 0;
         try {
             bytesRead = (0, fs_1.readSync)(process.stdin.fd, buf, 0, BUFSIZE, null);
         }
         catch (e) {
             if (e.code === "EAGAIN") {
-                throw "ERROR: interactive stdin input not supported.";
+                throw "ERROR: interactive stdin is not supported.";
             }
             else if (e.code === "EOF") {
                 break;
             }
             throw e;
         }
-        if (bytesRead === 0) {
+        if (bytesRead === 0)
             break;
-        }
         stdin += buf.toString(undefined, 0, bytesRead);
-    } while (bytesRead > 0);
+    }
     return stdin;
 }
 program
     .command("analyze")
     .description("Analyze a Dockerfile file for smells")
-    .option("--stdin", "Read the Dockerfile from stdin", false)
+    .option("--stdin", "Read Dockerfile from stdin", false)
     .argument("[file]", "The filepath to the Dockerfile")
     .action(function (file, options) {
     if (!options.stdin && !file) {
@@ -200,12 +228,12 @@ program
     var matcher = new rule_matcher_1.Matcher(dockerfile);
     var smells = matcher.matchAll();
     if (smells.length == 0) {
-        console.log("Well done, no smells found was found in ".concat(file, "!"));
+        console.log("No smells found in ".concat(file, "!"));
     }
     else {
-        console.log("Found ".concat(smells.length, " smells in ").concat(file, "."));
+        console.log("Found ".concat(smells.length, " smell(s)."));
+        smells.forEach(function (e) { return console.log(e.toString()); });
     }
-    smells.forEach(function (e) { return console.log(e.toString()); });
 });
 program.parse();
 //# sourceMappingURL=index.js.map
