@@ -118,6 +118,15 @@ enricher.enrich(ast);
 ast.find(dindhy.nodeType.Q("SC-APT-PACKAGE"));
 ```
 
+## Contributing
+
+### Testing
+
+Test fixtures are normalized to ensure cross-platform compatibility. All test expectations compare normalized strings (using the `normalizeEOL` helper) to ensure tests pass consistently on Windows (CRLF) and Unix (LF) systems.
+
+- Test fixture files (`.Dockerfile` files in `tests/data/` and `tests/repaired_data/`) are stored with LF line endings as enforced by `.gitattributes`
+- String comparisons in tests use the `normalizeEOL` helper from `tests/test-utils.ts` to normalize line endings before comparison
+- This ensures that `npm test` passes on all platforms regardless of the host OS line ending conventions
 
 ## Supported Rules
 
