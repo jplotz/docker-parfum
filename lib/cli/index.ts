@@ -28,9 +28,11 @@ program
   .option("--stdin", "Read the Dockerfile from stdin", false)
   .option("-o, --output <output>", "the output destination of the repair")
   .option("-i, --in-place", "if present, modify the input file directly", false)
+  .option("-q, --quiet", "suppress smell information", false)
+  .option("-p, --patch <file>", "write diff to <file>")
   .action(async function (
     file: string,
-    options: { inPlace: boolean; output: string; stdin: boolean }
+    options: { patch: string; quiet: boolean; inPlace: boolean; output: string; stdin: boolean }
   ) {
     if (!options.stdin && !file) {
       console.error("Please provide a Dockerfile file");
@@ -48,13 +50,17 @@ program
     const matcher = new Matcher(dockerfile);
 
     const smells = matcher.matchAll();
-    if (smells.length == 0) {
-      console.log(`Well done, no smells found was found in ${file}!`);
-    } else {
-      console.log(`Found ${smells.length} smells in ${file}.`);
+    if (!options.quiet) {
+      if (smells.length == 0) {
+        console.log(`Well done, no smells found was found in ${file}!`);
+      } else {
+        console.log(`Found ${smells.length} smells in ${file}.`);
+      }
     }
     for (const smell of smells) {
-      console.log(smell.toString());
+      if (!options.quiet) {
+        console.log(smell.toString());
+      }
       try {
         await smell.repair();
       } catch (error) {}
@@ -77,8 +83,16 @@ program
       console.log(`The repaired Dockerfile was written in ${file}`);
     }
 
-    console.log("The changes:\n");
-    console.log(diff);
+    if (!options.quiet) {
+      console.log("The changes:\n");
+    }
+    if (options.patch) {
+      await writeFile(options.patch, diff, { encoding: "utf-8" });
+      console.log(`diff written to ${options.patch}`);
+    }
+    else {
+      console.log(diff);
+    }
   });
 
 function stdinToString(): string {
