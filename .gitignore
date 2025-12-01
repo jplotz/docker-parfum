@@ -1,2 +1,6 @@
 node_modules
 coverage
+# Playwright browsers and test artifacts
+.playwright
+test-results
+playwright-report

@@ -9,8 +9,9 @@
     "noImplicitAny": false,
     "removeComments": true,
     "preserveConstEnums": true,
-    "outDir": "./build"
-    // "moduleResolution": "node"
+    "outDir": "./build",
+    "skipLibCheck": true,
+    "moduleResolution": "node"
   },
   "include": ["lib/cli/index.ts", "lib/**/*.ts"],
   "exclude": []

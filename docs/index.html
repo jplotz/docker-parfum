@@ -116,7 +116,7 @@
                 data-parent="#accordionExample"
               >
                 <div class="card-body">
-                  Please copy past a Dockerfile in the editor on the left. The
+                  Please copy paste a Dockerfile in the editor on the left. The
                   Dockerfile will be analyzed to indentify best-practice
                   smells and repair suggestions. Note: The AST is fully
                   reprint therefore there may have some slight differences in
@@ -497,13 +497,20 @@
                         class="card-text"
                         ng-bind="smell.rule.description"
                       ></div>
-                      <pre><code ng-bind-html="diff(smell.repaired)"></code></pre>
+                      <pre ng-if="smell.repaired"><code ng-bind-html="diff(smell.repaired)"></code></pre>
+                      <div ng-if="!smell.repaired" class="alert alert-warning">
+                        <small>Repair preview not available for this rule.</small>
+                      </div>
                       <button
                         class="btn btn-sm btn-outline-primary"
                         ng-click="apply(smell.repaired)"
+                        ng-if="smell.canRepair !== false"
                       >
                         Apply fix
                       </button>
+                      <div ng-if="smell.canRepair === false" class="alert alert-info mt-2 mb-0">
+                        <small>Auto-repair not available for this rule. Manual fix required.</small>
+                      </div>
                     </div>
                   </div>
                 </div>

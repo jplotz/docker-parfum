@@ -49,12 +49,12 @@ angular
       return result;
     };
   })
-  .controller("mainController", function ($scope, $sce) {
+  .controller("mainController", function ($scope, $sce, $timeout) {
     function init() {
       monacoEditor.getModel().onDidChangeContent(() => {
         const code = monacoEditor.getValue();
         if (code !== $scope.dockerfile) {
-          $scope.$apply(() => {
+          $timeout(() => {
             $scope.dockerfile = code;
           });
         }
@@ -97,7 +97,7 @@ angular
           o.push(current.type);
           current = current.parent;
         }
-        $scope.$apply(() => {
+        $timeout(() => {
           $scope.cursorPosition = o.reverse();
         });
       }
@@ -168,77 +168,140 @@ angular
 
     $scope.analyze = async function () {
       console.time("AST PARSING");
-      const dockerParser =
-        new dockerParfum.dinghy.dockerfileParser.DockerParser(
-          new dockerParfum.dinghy.File(undefined, $scope.dockerfile)
+      try {
+        const dockerParser =
+          new dockerParfum.dinghy.dockerfileParser.DockerParser(
+            new dockerParfum.dinghy.File(undefined, $scope.dockerfile)
+          );
+
+        let ast = null;
+        try {
+          ast = dockerParser.parse();
+          // Check for parse errors
+          if (dockerParser.errors && dockerParser.errors.length > 0) {
+            console.warn("Parse errors:", dockerParser.errors);
+            // Still try to use AST if available
+            if (!ast && dockerParser.errors.length > 0) {
+              const firstError = dockerParser.errors[0];
+              if (firstError.ast) {
+                ast = firstError.ast;
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Parse exception:", error);
+          if (error.ast) {
+            ast = error.ast;
+          } else if (dockerParser.errors && dockerParser.errors.length > 0) {
+            const firstError = dockerParser.errors[0];
+            if (firstError.ast) {
+              ast = firstError.ast;
+            }
+          }
+        }
+        
+        if (ast == null) {
+          console.error("Failed to parse Dockerfile - no AST generated");
+          $timeout(() => {
+            $scope.ast = undefined;
+            $scope.results = undefined;
+          });
+          console.timeEnd("AST PARSING");
+          return;
+        }
+        
+        const matcher = new dockerParfum.Matcher(ast);
+
+        const smells = [];
+        const allRules = dockerParfum.PARFUM_RULES.concat(
+          dockerParfum.HADOLINT_RULES,
+          dockerParfum.BINNACLE_RULES
+        );
+        for (const rule of allRules) {
+          matcher.match(rule).forEach((v) => smells.push(v));
+        }
+        smells.sort(
+          (a, b) => a.node.position.lineStart - b.node.position.lineStart
         );
 
-      let ast = null;
-      try {
-        ast = dockerParser.parse();
-      } catch (error) {
-        if (error.ast) {
-          ast = error.ast;
-        }
-        console.error(error.errors);
-      }
-      if (ast == null) {
-        $scope.ast = undefined;
-        return;
-      }
-      const matcher = new dockerParfum.Matcher(ast);
-
-      const smells = [];
-      const allRules = dockerParfum.PARFUM_RULES.concat(
-        dockerParfum.HADOLINT_RULES,
-        dockerParfum.BINNACLE_RULES
-      );
-      for (const rule of allRules) {
-        matcher.match(rule).forEach((v) => smells.push(v));
-      }
-      smells.sort(
-        (a, b) => a.node.position.lineStart - b.node.position.lineStart
-      );
-
-      $scope.ast = ast;
-      const output = { queries: {}, smells: [] };
-      output.queries.packages = ast
-        .find(dockerParfum.dinghy.nodeType.Q("SC-APT-PACKAGE"))
-        .map((n) => n.toString())
-        .filter((v, i, a) => a.indexOf(v) === i);
-      output.queries.urls = ast
-        .find(dockerParfum.dinghy.nodeType.Q("ABS-PROBABLY-URL"))
-        .map((n) => n.toString())
-        .filter((v, i, a) => a.indexOf(v) === i);
-      output.queries.paths = ast
-        .find(dockerParfum.dinghy.nodeType.Q("ABS-MAYBE-PATH"))
-        .map((n) => n.toString())
-        .concat(
-          ast
-            .find(dockerParfum.dinghy.nodeType.Q("BASH-PATH"))
-            .map((n) => n.toString())
-        )
-        .filter((v, i, a) => a.indexOf(v) === i);
-      output.queries.commands = ast
-        .find(
-          dockerParfum.dinghy.nodeType.Q(
-            dockerParfum.dinghy.nodeType.BashCommandCommand
+        $scope.ast = ast;
+        const output = { queries: {}, smells: [] };
+        
+        // Helper to safely convert nodes to strings (handles missing File in browser)
+        const safeToString = (n) => {
+          try {
+            return n.toString();
+          } catch (e) {
+            // Fallback: try with false parameter or return a simple representation
+            try {
+              return n.toString(false);
+            } catch (e2) {
+              return n.type || String(n);
+            }
+          }
+        };
+        
+        output.queries.packages = ast
+          .find(dockerParfum.dinghy.nodeType.Q("SC-APT-PACKAGE"))
+          .map(safeToString)
+          .filter((v, i, a) => a.indexOf(v) === i);
+        output.queries.urls = ast
+          .find(dockerParfum.dinghy.nodeType.Q("ABS-PROBABLY-URL"))
+          .map(safeToString)
+          .filter((v, i, a) => a.indexOf(v) === i);
+        output.queries.paths = ast
+          .find(dockerParfum.dinghy.nodeType.Q("ABS-MAYBE-PATH"))
+          .map(safeToString)
+          .concat(
+            ast
+              .find(dockerParfum.dinghy.nodeType.Q("BASH-PATH"))
+              .map(safeToString)
           )
-        )
-        .map((n) => n.toString())
-        .filter((v, i, a) => a.indexOf(v) === i);
+          .filter((v, i, a) => a.indexOf(v) === i);
+        output.queries.commands = ast
+          .find(
+            dockerParfum.dinghy.nodeType.Q(
+              dockerParfum.dinghy.nodeType.BashCommandCommand
+            )
+          )
+          .map(safeToString)
+          .filter((v, i, a) => a.indexOf(v) === i);
 
-      const markers = [];
-      for (const v of smells) {
-        try {
-          const node = await v.repair({ clone: true });
+        const markers = [];
+        for (const v of smells) {
+          let repairedStr = null;
+          let canRepair = false;
+          
+          try {
+            const node = await v.repair({ clone: true });
+            try {
+              const repairedNode = node.getParent(dockerParfum.dinghy.nodeType.DockerFile) || node;
+              repairedStr = repairedNode.toString(true);
+              canRepair = true;
+            } catch (e) {
+              try {
+                repairedStr = node.toString(true);
+                canRepair = true;
+              } catch (e2) {
+                repairedStr = node.toString() || node.type || "Unable to stringify";
+                canRepair = true;
+              }
+            }
+          } catch (error) {
+            // Repair not implemented or failed - still show the smell, but mark as non-repairable
+            console.warn("Repair not available for", v.rule.name, ":", error.message);
+            canRepair = false;
+            repairedStr = null;
+          }
+          
+          // Always add the smell, even if repair isn't available
           output.smells.push({
             rule: v.rule,
             position: v.node.position,
-            repaired: (
-              node.getParent(dockerParfum.dinghy.nodeType.DockerFile) || node
-            ).toString(true),
+            repaired: repairedStr,
+            canRepair: canRepair,
           });
+          
           markers.push({
             message: v.rule.description,
             severity: monaco.MarkerSeverity.Error,
@@ -248,28 +311,33 @@ angular
             endColumn: v.node.position.columnEnd + 1,
             source: v.rule.source,
           });
-        } catch (error) {
-          console.error(error);
         }
-      }
-      monaco.editor.setModelMarkers(monacoEditor.getModel(), "owner", markers);
+        monaco.editor.setModelMarkers(monacoEditor.getModel(), "owner", markers);
 
-      const nodes = {};
-      ast.traverse((node) => {
-        if (!nodes[node.type]) nodes[node.type] = [];
-        nodes[node.type].push(node);
-        node.annotations.forEach((a) => {
-          if (!nodes[a]) nodes[a] = [];
-          nodes[a].push(node);
+        const nodes = {};
+        ast.traverse((node) => {
+          if (!nodes[node.type]) nodes[node.type] = [];
+          nodes[node.type].push(node);
+          node.annotations.forEach((a) => {
+            if (!nodes[a]) nodes[a] = [];
+            nodes[a].push(node);
+          });
         });
-      });
-      $scope.$apply(() => {
-        $scope.results = output;
-        $scope.nodes = Object.keys(nodes)
-          .sort((a, b) => nodes[b].length - nodes[a].length)
-          .map((n) => [n, nodes[n].length]);
-      });
-      console.timeEnd("AST PARSING");
+        $timeout(() => {
+          $scope.results = output;
+          $scope.nodes = Object.keys(nodes)
+            .sort((a, b) => nodes[b].length - nodes[a].length)
+            .map((n) => [n, nodes[n].length]);
+        });
+        console.timeEnd("AST PARSING");
+      } catch (error) {
+        console.error("Analyze error:", error);
+        $timeout(() => {
+          $scope.results = undefined;
+          $scope.ast = undefined;
+        });
+        console.timeEnd("AST PARSING");
+      }
     };
     $scope.hoverNodeType = function (nodeType) {
       if (!$scope.ast) return;
@@ -361,16 +429,16 @@ angular
 
     let lastTimeout;
     $scope.$watch("dockerfile", function (newValue, oldValue) {
-      clearTimeout(lastTimeout);
-      lastTimeout = setTimeout(() => {
-        $scope.$apply(() => {
-          monaco.editor.setModelMarkers(monacoEditor.getModel(), "owner", []);
-          if (newValue) {
-            $scope.analyze();
-          } else {
-            $scope.results = undefined;
-          }
-        });
+      if (lastTimeout) {
+        $timeout.cancel(lastTimeout);
+      }
+      lastTimeout = $timeout(() => {
+        monaco.editor.setModelMarkers(monacoEditor.getModel(), "owner", []);
+        if (newValue) {
+          $scope.analyze();
+        } else {
+          $scope.results = undefined;
+        }
       }, 250);
     });
   });

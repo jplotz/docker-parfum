@@ -26,6 +26,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.parseAndMatch = exports.enricher = exports.dinghy = exports.Matcher = exports.Violation = exports.HADOLINT_RULES = exports.BINNACLE_RULES = exports.PARFUM_RULES = void 0;
 process.argv.push("--browser");
 var dinghy_1 = require("@tdurieux/dinghy");
+var dinghyModule = __importStar(require("@tdurieux/dinghy"));
 var rule_matcher_1 = require("./rule-matcher");
 var rules_1 = require("./rules");
 Object.defineProperty(exports, "PARFUM_RULES", { enumerable: true, get: function () { return rules_1.PARFUM_RULES; } });
@@ -34,7 +35,22 @@ Object.defineProperty(exports, "HADOLINT_RULES", { enumerable: true, get: functi
 var rule_matcher_2 = require("./rule-matcher");
 Object.defineProperty(exports, "Violation", { enumerable: true, get: function () { return rule_matcher_2.Violation; } });
 Object.defineProperty(exports, "Matcher", { enumerable: true, get: function () { return rule_matcher_2.Matcher; } });
-exports.dinghy = __importStar(require("@tdurieux/dinghy"));
+var nodeType = {
+    Q: dinghyModule.Q,
+    QOR: dinghyModule.QOR,
+    QAND: dinghyModule.QAND,
+    QValue: dinghyModule.QValue,
+    Query: dinghyModule.Query,
+    QueryOperator: dinghyModule.QueryOperator,
+    QueryOperatorAND: dinghyModule.QueryOperatorAND,
+    QueryOperatorOR: dinghyModule.QueryOperatorOR,
+    QueryOperatorValue: dinghyModule.QueryOperatorValue,
+    BashCommandCommand: dinghyModule.BashCommandCommand,
+    DockerFile: dinghyModule.DockerFile,
+    AbstractNode: dinghyModule.AbstractNode,
+    DockerAbstractNode: dinghyModule.DockerAbstractNode,
+};
+exports.dinghy = Object.assign({}, dinghyModule, { nodeType: nodeType });
 var dinghy_2 = require("@tdurieux/dinghy");
 Object.defineProperty(exports, "enricher", { enumerable: true, get: function () { return dinghy_2.enricher; } });
 function parseAndMatch(dockerfile) {
